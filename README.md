@@ -1,69 +1,134 @@
 ``` K S Ashwin Kumar```
 ```212224040034```
 
+## Ex.No: 6 HOLT WINTERS METHOD
+## Date:23-04-2025
 
-# EX.NO.09        A project on Time series analysis on weather forecasting using ARIMA model 
-### Date: 
+## AIM:
 
-### AIM:
-To Create a project on Time series analysis on weather forecasting using ARIMA model in  Python and compare with other models.
-### ALGORITHM:
-1. Explore the dataset of weather 
-2. Check for stationarity of time series time series plot
-   ACF plot and PACF plot
-   ADF test
-   Transform to stationary: differencing
-3. Determine ARIMA models parameters p, q
-4. Fit the ARIMA model
-5. Make time series predictions
-6. Auto-fit the ARIMA model
-7. Evaluate model predictions
-### PROGRAM:
-```
+To implement Holt-Winters model on National stocks exchange Data Set and make future predictions
+
+## ALGORITHM:
+
+- You import the necessary libraries
+- You load a CSV file containing daily sales data into a DataFrame, parse the 'date' column as - - - datetime, and perform some initial data exploration
+- You group the data by date and resample it to a monthly frequency (beginning of the month
+- You plot the time series data
+- You import the necessary 'statsmodels' libraries for time series analysis
+- You decompose the time series data into its additive components and plot them:
+- You calculate the root mean squared error (RMSE) to evaluate the model's performance
+- You calculate the mean and standard deviation of the entire sales dataset, then fit a Holt- 
+- Winters model to the entire dataset and make future predictions
+- You plot the original sales data and the predictions
+
+## PROGRAM :
+
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from statsmodels.tsa.arima.model import ARIMA
+from sklearn.preprocessing import MinMaxScaler
+from statsmodels.tsa.seasonal import seasonal_decompose
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from sklearn.metrics import mean_squared_error
 
-data = pd.read_csv("AirPassengers.csv")
+# Step 1: Load the dataset
+data = pd.read_csv('/content/AirPassengers (1).csv', parse_dates=['date'], index_col='date')
+print(data.head())
 
-data.head()
-data['Month'] = pd.to_datetime(data['Month'])
-data.set_index('Month', inplace=True)
+# Step 2: Resample to monthly data (if needed)
+data_monthly = data.resample('MS').sum()  # MS = Month Start
+print(data_monthly.head())
 
-def arima_model(data, target_variable, order):
-    train_size = int(len(data) * 0.8)
-    train_data, test_data = data[:train_size], data[train_size:]
+# Step 3: Plot the monthly data
+data_monthly.plot()
+plt.title('Monthly Passenger Data')
+plt.xlabel('Date')
+plt.ylabel('Number of Passengers')
+plt.show()
 
-    model = ARIMA(train_data[target_variable], order=order)
-    fitted_model = model.fit()
+# Step 4: Scale the data
+scaler = MinMaxScaler()
+scaled_data = pd.Series(
+    scaler.fit_transform(data_monthly.values.reshape(-1, 1)).flatten(),
+    index=data_monthly.index
+)
 
-    forecast = fitted_model.forecast(steps=len(test_data))
+# Plot scaled data
+scaled_data.plot()
+plt.title('Scaled Monthly Data')
+plt.show()
 
-    rmse = np.sqrt(mean_squared_error(test_data[target_variable], forecast))
-    
-    plt.figure(figsize=(10, 6))
-    plt.plot(train_data.index, train_data[target_variable], label='Training Data')
-    plt.plot(test_data.index, test_data[target_variable], label='Testing Data')
-    plt.plot(test_data.index, forecast, label='Forecasted Data')
-    plt.xlabel('Month')
-    plt.ylabel(target_variable)
-    plt.title('ARIMA Forecasting for ' + target_variable)
-    plt.legend()
-    plt.show()
+# Step 5: Seasonal Decomposition
+decomposition = seasonal_decompose(data_monthly, model="additive", period=12)
+decomposition.plot()
+plt.show()
 
-    print("Root Mean Squared Error (RMSE):", rmse)
+# Step 6: Prepare data for modeling
+# Shift scaled data up by 1 (multiplicative needs all positive)
+scaled_data = scaled_data + 1
 
-arima_model(data, '#Passengers', order=(5,1,0))
-    
-```
-### OUTPUT:
-Data:
-![image](https://github.com/user-attachments/assets/ded65774-a97a-413f-9ed3-9eac4950c0f5)
+train_data = scaled_data[:int(len(scaled_data) * 0.8)]
+test_data = scaled_data[int(len(scaled_data) * 0.8):]
 
-Arima Forcasting:
-![image](https://github.com/user-attachments/assets/55fe55c0-ef01-4f82-b2e2-f34ced1b7e48)
+# Step 7: Build the Exponential Smoothing model
+model_add = ExponentialSmoothing(train_data, trend='add', seasonal='mul', seasonal_periods=12).fit()
 
-### RESULT:
-Thus the program run successfully based on the ARIMA model using python.
+# Step 8: Forecast on the test set
+test_predictions_add = model_add.forecast(steps=len(test_data))
+
+# Step 9: Visual evaluation
+ax = train_data.plot()
+test_predictions_add.plot(ax=ax)
+test_data.plot(ax=ax)
+ax.legend(["Train Data", "Predictions", "Test Data"])
+ax.set_title('Visual Evaluation')
+plt.show()
+
+# Step 10: Model evaluation (RMSE)
+rmse = np.sqrt(mean_squared_error(test_data, test_predictions_add))
+print(f"Test RMSE: {rmse}")
+
+# Print variance and mean
+print("Variance of scaled data:", scaled_data.var())
+print("Mean of scaled data:", scaled_data.mean())
+
+# Step 11: Final Model Training and Future Forecast
+final_model = ExponentialSmoothing(data_monthly, trend='add', seasonal='mul', seasonal_periods=12).fit()
+final_predictions = final_model.forecast(steps=int(len(data_monthly)/4))  # Forecasting next 1 year (quarter of dataset)
+
+# Plot the final predictions
+ax = data_monthly.plot()
+final_predictions.plot(ax=ax)
+ax.legend(["Actual Data", "Future Predictions"])
+ax.set_xlabel('Date')
+ax.set_ylabel('Number of Passengers')
+ax.set_title('Final Forecast for Future')
+plt.show()
+
+
+
+## OUTPUT:
+
+Scaled_data plot:
+![Screenshot 2025-04-26 160214](https://github.com/user-attachments/assets/206c1f8e-f49a-442d-a8ac-90df87b539e8)
+
+
+DECOMPOSED PLOT:
+![Screenshot 2025-04-26 160230](https://github.com/user-attachments/assets/d8f4f3ab-24fa-4f47-a6f6-95f34e57c734)
+
+Test Prediction:
+![Screenshot 2025-04-26 160249](https://github.com/user-attachments/assets/2ae48f9d-a629-4c21-a0ba-503ad51f8bf7)
+
+Model Performance metrices:
+![Screenshot 2025-04-26 160308](https://github.com/user-attachments/assets/12f3c176-bc21-40e2-8d4d-4dae9f82a562)
+
+Final prediciton:
+![Screenshot 2025-04-26 160348](https://github.com/user-attachments/assets/bd846a9c-07d7-4f86-8b57-e6a2f659b123)
+
+
+## RESULT:
+
+Thus the program run successfully based on the Holt Winters Method model.
+
+
